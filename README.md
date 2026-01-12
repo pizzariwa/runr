@@ -70,7 +70,7 @@ flowchart TB
         
         subgraph Inputs["Configuration & UI"]
             CONFIG[config.yml<br/>Repos + Branches]
-            PROMPTS[@clack/prompts<br/>CLI UI Library]
+            PROMPTS["@clack/prompts<br/>CLI UI Library"]
             TYPES[workflow_types.ts<br/>Type-safe Schemas]
         end
         
