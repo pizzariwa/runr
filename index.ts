@@ -109,7 +109,7 @@ intro("Getting Workflow Inputs");
 
 // Get the worfklow inputs, their types, defaults and types
 const workflowViewCommandOutput =
-  await execa`gh workflow view ${selectedWorkflowName} -R ${repo.toString()} --yaml`;
+  await execa`gh workflow view ${selectedWorkflowName} -R ${repo.toString()} --ref ${String(branch)} --yaml`;
 
 
 // Parse the output of workflowFile and get .on.workflow.dispatch_inputs

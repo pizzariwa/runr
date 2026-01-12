@@ -13,7 +13,7 @@ The following sections provides a "Getting Up to Speed" overview, designed to be
 
 **Purpose:** A TypeScript CLI tool that provides an interactive wrapper for GitHub Actions workflow dispatch, simplifying the process of triggering workflows across multiple repositories.
 
-**What it does:** Runr streamlines the GitHub Actions workflow dispatch process by providing an interactive CLI interface. Users can select repositories, branches, and workflows from a configured list, then dynamically populate workflow inputs based on the workflow's schema. It validates authentication, displays the generated command for confirmation, and optionally opens the workflow in the browser after execution.
+**What it does:** Runr streamlines the GitHub Actions workflow dispatch process by providing an interactive CLI interface. Users can select repositories, branches, and workflows from a configured list, then dynamically populate workflow inputs based on the selected branch's workflow schema. It validates authentication, displays the generated command for confirmation, and optionally opens the workflow (at the selected ref) in the browser after execution.
 
 **Problem Solved:** Manually dispatching GitHub Actions workflows requires navigating the GitHub UI or constructing complex CLI commands with multiple input flags. This tool eliminates the friction of remembering repository names, branch configurations, and workflow input schemas by providing a guided, interactive experience.
 
@@ -28,10 +28,10 @@ The following sections provides a "Getting Up to Speed" overview, designed to be
 - **Authentication Check**: Validates GitHub CLI login status before proceeding
 - **Repository Management**: Reads and parses YAML config for available repositories and branches
 - **Workflow Discovery**: Lists active workflows from selected repository via GitHub CLI
-- **Input Schema Parsing**: Extracts and types `workflow_dispatch` inputs from workflow YAML
+- **Input Schema Parsing**: Extracts and types `workflow_dispatch` inputs from the selected branch's workflow YAML
 - **Interactive Prompts**: Provides text, select, and confirm prompts for user input
 - **Command Execution**: Builds and executes `gh workflow run` with proper arguments
-- **Web UI Integration**: Opens workflow view in browser on demand
+- **Web UI Integration**: Opens workflow view for the selected branch in browser on demand
 
 ---
 
