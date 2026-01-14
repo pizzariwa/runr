@@ -294,10 +294,18 @@ export async function runWorkflowCreation(): Promise<void> {
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
-const isMainModule = process.argv[1] && 
-  fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+function isMainModule(): boolean {
+  if (!process.argv[1]) {
+    return false;
+  }
+  try {
+    return fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+  } catch {
+    return false;
+  }
+}
 
-if (isMainModule) {
+if (isMainModule()) {
   runWorkflowCreation().catch((error) => {
     log.error(String(error));
     process.exit(1);
