@@ -290,7 +290,14 @@ export async function runWorkflowCreation(): Promise<void> {
 }
 
 // Only run if this is the main module (not imported for testing)
-if (import.meta.url === `file://${process.argv[1]}`) {
+// In ESM, we check if import.meta.url matches the resolved file path
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+
+const isMainModule = process.argv[1] && 
+  fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+
+if (isMainModule) {
   runWorkflowCreation().catch((error) => {
     log.error(String(error));
     process.exit(1);

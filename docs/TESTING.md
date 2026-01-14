@@ -82,6 +82,21 @@ The tests use Jest's `unstable_mockModule` to mock:
 - **node:fs/promises**: For mocking file system operations
 - **@clack/prompts**: For mocking user interface interactions
 
+### ESM Import Considerations
+
+Due to ESM module requirements, imports in test files use the `.js` extension even though source files are `.ts`:
+
+```typescript
+const { functionUnderTest } = await import('./index.js');
+```
+
+This is required by Node.js ESM specification where imports must include the file extension. TypeScript's module mapper in jest.config.cjs handles the translation from `.js` to `.ts` during test execution. While this creates a dependency on the compiled output structure, it's a standard pattern for TypeScript ESM testing.
+
+**Alternative approaches:**
+- Use a test runner with better TypeScript support (like Vitest)
+- Configure custom TypeScript path mappings
+- Use a bundler for tests that handles extensions automatically
+
 ## Configuration
 
 ### jest.config.cjs
