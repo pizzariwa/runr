@@ -15,7 +15,7 @@ module.exports = {
     ],
   },
   collectCoverageFrom: [
-    "index.refactored.ts",
+    "index.ts",
     "workflow_types.ts",
     "!**/*.d.ts",
     "!**/node_modules/**",

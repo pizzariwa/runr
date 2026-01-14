@@ -34,6 +34,7 @@ jest.unstable_mockModule('@clack/prompts', () => ({
 }));
 
 // Import the module under test
+// Note: Using .js extension is required for ESM imports even though source is .ts
 const {
   checkLogin,
   loadConfig,
