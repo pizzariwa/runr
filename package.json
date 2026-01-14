@@ -8,7 +8,10 @@
     "dev:node": "npx tsx index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:node": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:bun": "bun test",
+    "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "keywords": [],
   "author": "Artur Kaminski",
@@ -16,7 +19,10 @@
   "description": "Runr streamlines the GitHub Actions workflow dispatch process by providing an interactive CLI interface. Users can select repositories, branches, and workflows from a configured list, then dynamically populate workflow inputs based on the workflow's schema. It validates authentication, displays the generated command for confirmation, and optionally opens the workflow in the browser after execution.",
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.0.3",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
