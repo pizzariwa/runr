@@ -1,0 +1,61 @@
+name: "Bug Report (for Agent)"
+description: "File a bug report that the GitHub Copilot coding agent can address."
+title: "[BUG] <concise description of the issue>"
+labels: ["copilot", "bug"]
+assignees: ["@copilot"] # Assigns the issue to the coding agent automatically
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Instructions for the Coding Agent
+
+        Assign this issue to Copilot and  address the following bug. 
+
+        Your goal is to reproduce the issue, write a failing test case, fix the bug, and ensure all tests pass.
+
+        - **Focus Area**: [Specify the file(s) or module(s) to focus on]
+        - **Acceptance Criteria**: [Specify what defines a successful fix]
+        - **Priority**: Medium
+
+        Note: If you need more information, leave a comment asking for clarification.
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: "Problem Description"
+      description: "A clear and concise description of what the bug is."
+      placeholder: "e.g., When I click 'submit' without filling the form, the application crashes."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: "Reproduction Steps"
+      description: "Steps to reproduce the behavior:"
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: "Expected behavior"
+      description: "A clear and concise description of what you expected to happen."
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: "Actual behavior"
+      description: "The behavior that actually occurred."
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: "Additional context (screenshots, logs, etc.)"
+      description: "Add any other context about the problem here."
