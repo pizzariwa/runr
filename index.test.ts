@@ -4,6 +4,7 @@ import type { ResultPromise } from 'execa';
 // Create mock functions
 const mockExecaFn = jest.fn();
 const mockReadFileFn = jest.fn();
+const mockWriteFileFn = jest.fn();
 
 // Mock modules with unstable_mockModule
 jest.unstable_mockModule('execa', () => ({
@@ -12,6 +13,7 @@ jest.unstable_mockModule('execa', () => ({
 
 jest.unstable_mockModule('node:fs/promises', () => ({
   readFile: mockReadFileFn,
+  writeFile: mockWriteFileFn,
 }));
 
 jest.unstable_mockModule('@clack/prompts', () => ({
@@ -46,6 +48,8 @@ const {
   buildInputPrompts,
   buildWorkflowRunArgs,
   buildDisplayInfo,
+  getBookmarksForRepo,
+  saveBookmark,
 } = await import('./index.js');
 
 describe('Phase 1: Login State', () => {
@@ -100,6 +104,32 @@ repos:
       ],
     });
     expect(mockReadFileFn).toHaveBeenCalledWith('./config.yml', 'utf8');
+  });
+
+  it('should successfully load config with bookmarks', async () => {
+    const configWithBookmarks = `
+repos:
+  - name: owner/repo1
+    branches:
+      - main
+    bookmarks:
+      - nickname: "Production Deploy"
+        workflow: "deploy.yml"
+        branch: "main"
+        inputs:
+          environment: "prod"
+          version: "1.0.0"
+`;
+    mockReadFileFn.mockResolvedValueOnce(configWithBookmarks);
+
+    const result = await loadConfig('./config.yml');
+    
+    expect(result.repos[0]?.bookmarks).toHaveLength(1);
+    expect(result.repos[0]?.bookmarks?.[0]?.nickname).toBe('Production Deploy');
+    expect(result.repos[0]?.bookmarks?.[0]?.inputs).toEqual({
+      environment: 'prod',
+      version: '1.0.0',
+    });
   });
 
   it('should throw error when config file is not found', async () => {
@@ -453,5 +483,190 @@ describe('Phase 8: Running Workflow', () => {
     expect(result).toContain('Repo             : owner/test');
     expect(result).toContain('Branch           : dev');
     expect(result).toContain('Inputs :');
+  });
+});
+
+describe('Phase 9: Bookmark Management', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('getBookmarksForRepo', () => {
+    it('should return bookmarks for a repository', () => {
+      const config = {
+        repos: [
+          {
+            name: 'owner/repo1',
+            branches: ['main'],
+            bookmarks: [
+              {
+                nickname: 'Production Deploy',
+                workflow: 'deploy.yml',
+                branch: 'main',
+                inputs: { environment: 'prod', version: '1.0.0' },
+              },
+            ],
+          },
+          {
+            name: 'owner/repo2',
+            branches: ['dev'],
+          },
+        ],
+      };
+
+      const result = getBookmarksForRepo(config, 'owner/repo1');
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.nickname).toBe('Production Deploy');
+      expect(result[0]?.workflow).toBe('deploy.yml');
+      expect(result[0]?.branch).toBe('main');
+    });
+
+    it('should return empty array when repo has no bookmarks', () => {
+      const config = {
+        repos: [
+          {
+            name: 'owner/repo1',
+            branches: ['main'],
+          },
+        ],
+      };
+
+      const result = getBookmarksForRepo(config, 'owner/repo1');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array when repo is not found', () => {
+      const config = {
+        repos: [
+          {
+            name: 'owner/repo1',
+            branches: ['main'],
+          },
+        ],
+      };
+
+      const result = getBookmarksForRepo(config, 'owner/nonexistent');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('saveBookmark', () => {
+    it('should save a bookmark to config.yml', async () => {
+      const configYaml = `
+repos:
+  - name: owner/repo1
+    branches:
+      - main
+`;
+      mockReadFileFn.mockResolvedValueOnce(configYaml);
+      mockWriteFileFn.mockResolvedValueOnce(undefined);
+
+      const bookmark = {
+        nickname: 'Test Deploy',
+        workflow: 'deploy.yml',
+        branch: 'main',
+        inputs: { env: 'staging' },
+      };
+
+      await saveBookmark('./config.yml', 'owner/repo1', bookmark);
+
+      expect(mockReadFileFn).toHaveBeenCalledWith('./config.yml', 'utf8');
+      expect(mockWriteFileFn).toHaveBeenCalledWith(
+        './config.yml',
+        expect.stringContaining('nickname: Test Deploy'),
+        'utf8'
+      );
+      expect(mockWriteFileFn).toHaveBeenCalledWith(
+        './config.yml',
+        expect.stringContaining('workflow: deploy.yml'),
+        'utf8'
+      );
+    });
+
+    it('should append to existing bookmarks', async () => {
+      const configYaml = `
+repos:
+  - name: owner/repo1
+    branches:
+      - main
+    bookmarks:
+      - nickname: Existing Bookmark
+        workflow: old.yml
+        branch: main
+        inputs:
+          key: value
+`;
+      mockReadFileFn.mockResolvedValueOnce(configYaml);
+      mockWriteFileFn.mockResolvedValueOnce(undefined);
+
+      const bookmark = {
+        nickname: 'New Bookmark',
+        workflow: 'new.yml',
+        branch: 'dev',
+        inputs: { env: 'prod' },
+      };
+
+      await saveBookmark('./config.yml', 'owner/repo1', bookmark);
+
+      expect(mockWriteFileFn).toHaveBeenCalledWith(
+        './config.yml',
+        expect.stringContaining('Existing Bookmark'),
+        'utf8'
+      );
+      expect(mockWriteFileFn).toHaveBeenCalledWith(
+        './config.yml',
+        expect.stringContaining('New Bookmark'),
+        'utf8'
+      );
+    });
+
+    it('should throw error when repo is not found', async () => {
+      const configYaml = `
+repos:
+  - name: owner/repo1
+    branches:
+      - main
+`;
+      mockReadFileFn.mockResolvedValueOnce(configYaml);
+
+      const bookmark = {
+        nickname: 'Test',
+        workflow: 'test.yml',
+        branch: 'main',
+        inputs: {},
+      };
+
+      await expect(
+        saveBookmark('./config.yml', 'owner/nonexistent', bookmark)
+      ).rejects.toThrow('Repository owner/nonexistent not found in config');
+    });
+
+    it('should handle config without existing bookmarks array', async () => {
+      const configYaml = `
+repos:
+  - name: owner/repo1
+    branches:
+      - main
+`;
+      mockReadFileFn.mockResolvedValueOnce(configYaml);
+      mockWriteFileFn.mockResolvedValueOnce(undefined);
+
+      const bookmark = {
+        nickname: 'First Bookmark',
+        workflow: 'test.yml',
+        branch: 'main',
+        inputs: { key: 'value' },
+      };
+
+      await saveBookmark('./config.yml', 'owner/repo1', bookmark);
+
+      expect(mockWriteFileFn).toHaveBeenCalled();
+      const writtenContent = mockWriteFileFn.mock.calls[0]?.[1] as string;
+      expect(writtenContent).toContain('bookmarks:');
+      expect(writtenContent).toContain('nickname: First Bookmark');
+    });
   });
 });

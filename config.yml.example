@@ -3,6 +3,14 @@ repos:
     branches:
       - master
       - dev
+    # Optional: Saved workflow configurations for quick re-run
+    # bookmarks:
+    #   - nickname: "Production Deploy"
+    #     workflow: "deploy.yml"
+    #     branch: "main"
+    #     inputs:
+    #       environment: "prod"
+    #       version: "1.0.0"
   - name: {owner}/{repo}
     branches:
       - master

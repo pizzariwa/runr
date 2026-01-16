@@ -11,11 +11,21 @@ import { isChoiceInput } from "./workflow_types.js";
 
 // EXECA DOCS : https://github.com/sindresorhus/execa/blob/main/docs/execution.md
 
+const CONFIG_PATH = "./config.yml";
+
 // Define the expected structure of your config
+export interface Bookmark {
+  nickname: string;
+  workflow: string;
+  branch: string;
+  inputs: Record<string, string>;
+}
+
 export interface RepoConfig {
   repos: Array<{
     name: string;
     branches: string[];
+    bookmarks?: Bookmark[];
   }>;
 }
 
@@ -160,6 +170,36 @@ export function buildDisplayInfo(
   ].join("\n");
 }
 
+export function getBookmarksForRepo(config: RepoConfig, repoName: string): Bookmark[] {
+  const repo = config.repos.find((r) => r.name === repoName);
+  return repo?.bookmarks || [];
+}
+
+export async function saveBookmark(
+  configPath: string,
+  repoName: string,
+  bookmark: Bookmark
+): Promise<void> {
+  const { readFile, writeFile } = await import("node:fs/promises");
+  const { stringify: stringifyYaml } = await import("yaml");
+  
+  const configText = await readFile(configPath, "utf8");
+  const config = parseYaml(configText) as RepoConfig;
+  
+  const repo = config.repos.find((r) => r.name === repoName);
+  if (!repo) {
+    throw new Error(`Repository ${repoName} not found in config`);
+  }
+  
+  if (!repo.bookmarks) {
+    repo.bookmarks = [];
+  }
+  
+  repo.bookmarks.push(bookmark);
+  
+  await writeFile(configPath, stringifyYaml(config), "utf8");
+}
+
 // Main function that orchestrates the workflow
 export async function runWorkflowCreation(): Promise<void> {
   intro("Starting Workflow Creation");
@@ -182,7 +222,7 @@ export async function runWorkflowCreation(): Promise<void> {
   intro("Loading Config");
 
   // Read and parse the YAML config at runtime
-  const config = await loadConfig();
+  const config = await loadConfig(CONFIG_PATH);
   log.step(`Config : ${JSON.stringify(config, null, 4)}`);
   outro("Finished Loading Config");
 
@@ -214,57 +254,164 @@ export async function runWorkflowCreation(): Promise<void> {
 
   const workflows = await listWorkflows(String(repo));
   const activeWorkflows = filterActiveWorkflows(workflows);
+  const bookmarks = getBookmarksForRepo(config, String(repo));
 
-  // Select a workflow
-  const selectedWorkflowId = await select({
-    message: "Select Workflow",
-    options: activeWorkflows.map((w) => ({
-      value: w.id,
+  // Build options with bookmarks first, then workflows
+  const workflowOptions = [];
+  
+  // Add bookmarks with ⭐ prefix
+  if (bookmarks.length > 0) {
+    workflowOptions.push(
+      ...bookmarks.map((bookmark, idx) => ({
+        value: `bookmark:${idx}`,
+        label: `⭐ ${bookmark.nickname}`,
+        hint: `${bookmark.workflow} (${bookmark.branch})`,
+      }))
+    );
+  }
+  
+  // Add regular workflows
+  workflowOptions.push(
+    ...activeWorkflows.map((w) => ({
+      value: `workflow:${w.id}`,
       label: w.name,
       hint: w.path,
-    })),
-  });
-
-  const selectedWorkflow = activeWorkflows.find((w) => w.id === selectedWorkflowId);
-  const selectedWorkflowName = selectedWorkflow?.name ?? "";
-
-  log.step(`Selected Workflow: [${selectedWorkflowName}]`);
-  outro("Finished Workflow Selection");
-
-  intro("Workflow Input Retrieval");
-
-  const inputsArray = await getWorkflowInputs(selectedWorkflowName, String(repo), String(branch));
-  outro("Finished Workflow Input Retrieval");
-
-  intro("User Input Collection");
-
-  const createdGroup = buildInputPrompts(inputsArray);
-
-  const inputGroup = await group(
-    createdGroup,
-    {
-      onCancel: ({ results }) => {
-        cancel('Operation cancelled.');
-        process.exit(0);
-      },
-    }
+    }))
   );
 
-  outro("Finished User Input Collection");
+  // Select a workflow or bookmark
+  const selection = await select({
+    message: "Select Workflow or Bookmark",
+    options: workflowOptions,
+  });
+
+  const selectionStr = String(selection);
+  let selectedWorkflowName: string;
+  let inputGroup: Record<string, unknown>;
+  let actualBranch: string;
+
+  if (selectionStr.startsWith("bookmark:")) {
+    // Handle bookmark selection
+    const bookmarkIndexStr = selectionStr.split(":")[1];
+    if (!bookmarkIndexStr) {
+      log.error("Invalid bookmark selection format");
+      process.exit(1);
+    }
+    const bookmarkIndex = parseInt(bookmarkIndexStr);
+    if (isNaN(bookmarkIndex)) {
+      log.error("Invalid bookmark index");
+      process.exit(1);
+    }
+    const bookmark = bookmarks[bookmarkIndex];
+    
+    if (!bookmark) {
+      log.error("Invalid bookmark selection");
+      process.exit(1);
+    }
+    
+    selectedWorkflowName = bookmark.workflow;
+    actualBranch = bookmark.branch;
+    inputGroup = bookmark.inputs;
+    
+    log.step(`Selected Bookmark: [${bookmark.nickname}]`);
+    log.step(`Workflow: [${selectedWorkflowName}] on branch [${actualBranch}]`);
+    outro("Finished Workflow Selection");
+  } else {
+    // Handle regular workflow selection
+    const workflowIdStr = selectionStr.split(":")[1];
+    if (!workflowIdStr) {
+      log.error("Invalid workflow selection format");
+      process.exit(1);
+    }
+    const workflowId = parseInt(workflowIdStr);
+    if (isNaN(workflowId)) {
+      log.error("Invalid workflow ID");
+      process.exit(1);
+    }
+    const selectedWorkflow = activeWorkflows.find((w) => w.id === workflowId);
+    
+    if (!selectedWorkflow) {
+      log.error("Invalid workflow selection");
+      process.exit(1);
+    }
+    
+    selectedWorkflowName = selectedWorkflow.name;
+    actualBranch = String(branch);
+
+    log.step(`Selected Workflow: [${selectedWorkflowName}]`);
+    outro("Finished Workflow Selection");
+
+    intro("Workflow Input Retrieval");
+
+    const inputsArray = await getWorkflowInputs(selectedWorkflowName, String(repo), actualBranch);
+    outro("Finished Workflow Input Retrieval");
+
+    intro("User Input Collection");
+
+    const createdGroup = buildInputPrompts(inputsArray);
+
+    inputGroup = await group(
+      createdGroup,
+      {
+        onCancel: ({ results }) => {
+          cancel('Operation cancelled.');
+          process.exit(0);
+        },
+      }
+    );
+
+    outro("Finished User Input Collection");
+    
+    // Ask if user wants to save as bookmark
+    const shouldSaveBookmark = await confirm({
+      message: "Do you want to save this workflow configuration as a bookmark?",
+      initialValue: false,
+    });
+    
+    if (shouldSaveBookmark) {
+      const nickname = await text({
+        message: "Enter a nickname for this bookmark:",
+        placeholder: "e.g., Production Deploy",
+        validate: (value) => {
+          if (!value || value.trim().length === 0) {
+            return "Nickname cannot be empty";
+          }
+        },
+      });
+      
+      if (typeof nickname === "string" && nickname.trim().length > 0) {
+        const bookmarkToSave: Bookmark = {
+          nickname: nickname.trim(),
+          workflow: selectedWorkflowName,
+          branch: actualBranch,
+          inputs: Object.fromEntries(
+            Object.entries(inputGroup).map(([k, v]) => [k, String(v)])
+          ),
+        };
+        
+        try {
+          await saveBookmark(CONFIG_PATH, String(repo), bookmarkToSave);
+          log.success(`Bookmark "${nickname}" saved successfully!`);
+        } catch (error) {
+          log.error(`Failed to save bookmark: ${error}`);
+        }
+      }
+    }
+  }
 
   intro("Running Workflow");
 
   const workflowRunArgs = buildWorkflowRunArgs(
     selectedWorkflowName,
     String(repo),
-    String(branch),
+    actualBranch,
     inputGroup
   );
 
   const displayInfo = buildDisplayInfo(
     selectedWorkflowName,
     String(repo),
-    String(branch),
+    actualBranch,
     inputGroup
   );
 

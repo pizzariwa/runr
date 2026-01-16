@@ -20,6 +20,7 @@ The following sections provides a "Getting Up to Speed" overview, designed to be
 **Key Benefits:**
 - **Interactive Selection**: Choose repos, branches, and workflows from pre-configured lists
 - **Dynamic Input Handling**: Automatically detects and prompts for all workflow input types (string, number, boolean, choice, environment)
+- **Workflow Bookmarking**: Save frequently-used workflow configurations with custom nicknames for quick re-run
 - **Command Confirmation**: Preview the generated `gh workflow run` command before execution
 - **Quick Browser Access**: Option to open the workflow run in GitHub's web UI immediately after dispatch
 
@@ -28,6 +29,7 @@ The following sections provides a "Getting Up to Speed" overview, designed to be
 - **Authentication Check**: Validates GitHub CLI login status before proceeding
 - **Repository Management**: Reads and parses YAML config for available repositories and branches
 - **Workflow Discovery**: Lists active workflows from selected repository via GitHub CLI
+- **Bookmark Management**: Save and load workflow configurations (workflow, branch, inputs) with custom nicknames
 - **Input Schema Parsing**: Extracts and types `workflow_dispatch` inputs from the selected branch's workflow YAML
 - **Interactive Prompts**: Provides text, select, and confirm prompts for user input
 - **Command Execution**: Builds and executes `gh workflow run` with proper arguments
@@ -178,6 +180,35 @@ cp config.yml.example config.yml
 #     branches:
 #       - main
 #       - develop
+```
+
+### Using Workflow Bookmarks
+
+Runr allows you to save frequently-used workflow configurations as bookmarks for quick re-run:
+
+**Saving a Bookmark:**
+1. After selecting a workflow and entering all inputs, you'll be prompted: "Do you want to save this workflow configuration as a bookmark?"
+2. Choose "Yes" and enter a custom nickname (e.g., "Production Deploy")
+3. The bookmark is saved to `config.yml` under your repository's `bookmarks` section
+
+**Using a Bookmark:**
+1. When selecting a workflow, bookmarks appear at the top of the list with a ⭐ prefix
+2. Select a bookmark to skip input collection and use the saved configuration
+3. Review the configuration in the confirmation screen before execution
+
+**Bookmark Structure in config.yml:**
+```yaml
+repos:
+  - name: owner/repo
+    branches:
+      - main
+    bookmarks:
+      - nickname: "Production Deploy"
+        workflow: "deploy.yml"
+        branch: "main"
+        inputs:
+          environment: "prod"
+          version: "1.0.0"
 ```
 
 ### Running Locally
