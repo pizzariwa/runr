@@ -106,6 +106,32 @@ repos:
     expect(mockReadFileFn).toHaveBeenCalledWith('./config.yml', 'utf8');
   });
 
+  it('should successfully load config with bookmarks', async () => {
+    const configWithBookmarks = `
+repos:
+  - name: owner/repo1
+    branches:
+      - main
+    bookmarks:
+      - nickname: "Production Deploy"
+        workflow: "deploy.yml"
+        branch: "main"
+        inputs:
+          environment: "prod"
+          version: "1.0.0"
+`;
+    mockReadFileFn.mockResolvedValueOnce(configWithBookmarks);
+
+    const result = await loadConfig('./config.yml');
+    
+    expect(result.repos[0]?.bookmarks).toHaveLength(1);
+    expect(result.repos[0]?.bookmarks?.[0]?.nickname).toBe('Production Deploy');
+    expect(result.repos[0]?.bookmarks?.[0]?.inputs).toEqual({
+      environment: 'prod',
+      version: '1.0.0',
+    });
+  });
+
   it('should throw error when config file is not found', async () => {
     mockReadFileFn.mockRejectedValueOnce(new Error('ENOENT: no such file'));
 
