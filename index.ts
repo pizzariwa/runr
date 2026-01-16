@@ -11,6 +11,8 @@ import { isChoiceInput } from "./workflow_types.js";
 
 // EXECA DOCS : https://github.com/sindresorhus/execa/blob/main/docs/execution.md
 
+const CONFIG_PATH = "./config.yml";
+
 // Define the expected structure of your config
 export interface Bookmark {
   nickname: string;
@@ -220,8 +222,7 @@ export async function runWorkflowCreation(): Promise<void> {
   intro("Loading Config");
 
   // Read and parse the YAML config at runtime
-  const configPath = "./config.yml";
-  const config = await loadConfig(configPath);
+  const config = await loadConfig(CONFIG_PATH);
   log.step(`Config : ${JSON.stringify(config, null, 4)}`);
   outro("Finished Loading Config");
 
@@ -297,6 +298,10 @@ export async function runWorkflowCreation(): Promise<void> {
       process.exit(1);
     }
     const bookmarkIndex = parseInt(bookmarkIndexStr);
+    if (isNaN(bookmarkIndex)) {
+      log.error("Invalid bookmark index");
+      process.exit(1);
+    }
     const bookmark = bookmarks[bookmarkIndex];
     
     if (!bookmark) {
@@ -319,6 +324,10 @@ export async function runWorkflowCreation(): Promise<void> {
       process.exit(1);
     }
     const workflowId = parseInt(workflowIdStr);
+    if (isNaN(workflowId)) {
+      log.error("Invalid workflow ID");
+      process.exit(1);
+    }
     const selectedWorkflow = activeWorkflows.find((w) => w.id === workflowId);
     
     if (!selectedWorkflow) {
@@ -381,7 +390,7 @@ export async function runWorkflowCreation(): Promise<void> {
         };
         
         try {
-          await saveBookmark(configPath, String(repo), bookmarkToSave);
+          await saveBookmark(CONFIG_PATH, String(repo), bookmarkToSave);
           log.success(`Bookmark "${nickname}" saved successfully!`);
         } catch (error) {
           log.error(`Failed to save bookmark: ${error}`);
