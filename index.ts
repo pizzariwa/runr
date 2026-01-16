@@ -291,7 +291,12 @@ export async function runWorkflowCreation(): Promise<void> {
 
   if (selectionStr.startsWith("bookmark:")) {
     // Handle bookmark selection
-    const bookmarkIndex = parseInt(selectionStr.split(":")[1] || "0");
+    const bookmarkIndexStr = selectionStr.split(":")[1];
+    if (!bookmarkIndexStr) {
+      log.error("Invalid bookmark selection format");
+      process.exit(1);
+    }
+    const bookmarkIndex = parseInt(bookmarkIndexStr);
     const bookmark = bookmarks[bookmarkIndex];
     
     if (!bookmark) {
@@ -305,11 +310,23 @@ export async function runWorkflowCreation(): Promise<void> {
     
     log.step(`Selected Bookmark: [${bookmark.nickname}]`);
     log.step(`Workflow: [${selectedWorkflowName}] on branch [${actualBranch}]`);
+    outro("Finished Workflow Selection");
   } else {
     // Handle regular workflow selection
-    const workflowId = parseInt(selectionStr.split(":")[1] || "0");
+    const workflowIdStr = selectionStr.split(":")[1];
+    if (!workflowIdStr) {
+      log.error("Invalid workflow selection format");
+      process.exit(1);
+    }
+    const workflowId = parseInt(workflowIdStr);
     const selectedWorkflow = activeWorkflows.find((w) => w.id === workflowId);
-    selectedWorkflowName = selectedWorkflow?.name ?? "";
+    
+    if (!selectedWorkflow) {
+      log.error("Invalid workflow selection");
+      process.exit(1);
+    }
+    
+    selectedWorkflowName = selectedWorkflow.name;
     actualBranch = String(branch);
 
     log.step(`Selected Workflow: [${selectedWorkflowName}]`);
@@ -372,8 +389,6 @@ export async function runWorkflowCreation(): Promise<void> {
       }
     }
   }
-
-  outro("Finished Workflow Selection");
 
   intro("Running Workflow");
 
